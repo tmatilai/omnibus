@@ -180,21 +180,22 @@ fi
 echo "Downloading Chef $version for ${platform}..."
 
 url="http://s3.amazonaws.com/opscode-full-stack/$platform-$platform_version-$machine/$filename"
+tmp_dir=$(mktemp -d -t tmp.XXXXXXXX || echo "/tmp")
 
 if exists wget;
 then
-  wget -O /tmp/$filename $url
+  wget -O "$tmp_dir/$filename" $url
 elif exists curl;
 then
-  curl $url > /tmp/$filename
+  curl $url > "$tmp_dir/$filename"
 else
   echo "Cannot find wget or curl - cannot install Chef!"
   exit 5
 fi
 
 # Check to see if we got a 404 or an empty file
-grep "does not exist" /tmp/$filename 2>&1 >/dev/null
-if [ $? -eq 0 ] || [ ! -s /tmp/$filename ]
+grep "does not exist" "$tmp_dir/$filename" &>/dev/null
+if [ $? -eq 0 ] || [ ! -s "$tmp_dir/$filename" ]
 then
   echo "Unable to retrieve a valid package!"
   report_bug
@@ -204,9 +205,9 @@ fi
 
 echo "Installing Chef $version"
 case "$filetype" in
-  "rpm") rpm -Uvh /tmp/$filename ;;
-  "deb") dpkg -i /tmp/$filename ;;
-  "sh" ) bash /tmp/$filename ;;
+  "rpm") rpm -Uvh "$tmp_dir/$filename" ;;
+  "deb") dpkg -i "$tmp_dir/$filename" ;;
+  "sh" ) bash "$tmp_dir/$filename" ;;
 esac
 
 if [ $? -ne 0 ];
@@ -214,4 +215,9 @@ then
   echo "Installation failed"
   report_bug
   exit 1
+fi
+
+if [ "$tmp_dir" != "/tmp" ];
+then
+    rm -r "$tmp_dir"
 fi
